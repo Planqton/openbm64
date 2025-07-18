@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
+import android.util.Log
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -26,6 +27,7 @@ class HomeFragment : Fragment() {
     private lateinit var statusText: TextView
     private var gatt: BluetoothGatt? = null
     private lateinit var dbHelper: MeasurementDbHelper
+    private val TAG = "HomeFragment"
     private val requestCode = 1002
     private var deviceAddress: String? = null
 
@@ -128,7 +130,10 @@ class HomeFragment : Fragment() {
             if (characteristic.uuid.toString().equals("00002a35-0000-1000-8000-00805f9b34fb", true)) {
                 val data = characteristic.value
                 val m = BleParser.parseMeasurement(data)
-                m?.let { dbHelper.insertMeasurement(it) }
+                m?.let {
+                    Log.d(TAG, "Fetched blood pressure: ${'$'}{it.systole}/${'$'}{it.diastole} mmHg")
+                    dbHelper.insertMeasurement(it)
+                }
             }
         }
     }
