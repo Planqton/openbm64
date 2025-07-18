@@ -4,6 +4,7 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -66,7 +67,7 @@ class HomeFragment : Fragment() {
             if (characteristic != null) {
                 gatt.setCharacteristicNotification(characteristic, true)
                 characteristic.descriptors.firstOrNull()?.let { desc ->
-                    desc.value = BluetoothGattCharacteristic.ENABLE_NOTIFICATION_VALUE
+                    desc.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                     gatt.writeDescriptor(desc)
                 }
             }
