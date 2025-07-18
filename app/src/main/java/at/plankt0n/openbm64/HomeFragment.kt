@@ -27,6 +27,7 @@ class HomeFragment : Fragment() {
     private var gatt: BluetoothGatt? = null
     private lateinit var dbHelper: MeasurementDbHelper
     private val requestCode = 1002
+    private var deviceAddress: String? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -81,7 +82,7 @@ class HomeFragment : Fragment() {
             }
         }
         if (address == null) return
-        statusText.text = getString(R.string.loading_data_from, address)
+        deviceAddress = address
         val adapter = BluetoothAdapter.getDefaultAdapter()
         val device = adapter.getRemoteDevice(address)
         gatt = device.connectGatt(requireContext(), false, gattCallback)
@@ -114,6 +115,12 @@ class HomeFragment : Fragment() {
                     desc.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                     gatt.writeDescriptor(desc)
                 }
+                statusText.post {
+                    val addr = deviceAddress ?: ""
+                    statusText.text = getString(R.string.reading_data_from, addr)
+                }
+            } else {
+                gatt.disconnect()
             }
         }
 

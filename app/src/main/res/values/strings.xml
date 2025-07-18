@@ -5,5 +5,5 @@
     <string name="title_third">Third</string>
     <string name="bluetooth_settings">Bluetooth Einstellungen</string>
     <string name="waiting_for_bm64">Warte auf BM64...</string>
-    <string name="loading_data_from">Lade Daten von Gerät %1$s...</string>
+    <string name="reading_data_from">Lese Daten von Gerät %1$s...</string>
 </resources>
