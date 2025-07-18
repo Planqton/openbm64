@@ -1,11 +1,13 @@
 package at.plankt0n.openbm64
 
+import android.Manifest
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -13,6 +15,7 @@ import android.view.ViewGroup
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.core.content.ContextCompat
 import androidx.preference.PreferenceManager
 import at.plankt0n.openbm64.db.BleParser
 import at.plankt0n.openbm64.db.MeasurementDbHelper
@@ -23,6 +26,7 @@ class HomeFragment : Fragment() {
     private lateinit var statusText: TextView
     private var gatt: BluetoothGatt? = null
     private lateinit var dbHelper: MeasurementDbHelper
+    private val requestCode = 1002
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -37,12 +41,34 @@ class HomeFragment : Fragment() {
         progressBar = view.findViewById(R.id.progress_wait)
         statusText = view.findViewById(R.id.text_status)
         dbHelper = MeasurementDbHelper(requireContext())
-        startListening()
+        checkPermissionAndStart()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         gatt?.close()
+    }
+
+    private fun checkPermissionAndStart() {
+        val required = mutableListOf<String>()
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            required.add(Manifest.permission.BLUETOOTH_CONNECT)
+        }
+        val missing = required.filter {
+            ContextCompat.checkSelfPermission(requireContext(), it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isNotEmpty()) {
+            requestPermissions(missing.toTypedArray(), requestCode)
+        } else {
+            startListening()
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == this.requestCode && grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+            startListening()
+        }
     }
 
     private fun startListening() {
@@ -69,8 +95,13 @@ class HomeFragment : Fragment() {
 
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
-            if (newState == BluetoothProfile.STATE_CONNECTED) {
+            if (newState == BluetoothProfile.STATE_CONNECTED && status == BluetoothGatt.GATT_SUCCESS) {
                 gatt.discoverServices()
+            } else if (newState == BluetoothProfile.STATE_DISCONNECTED || status != BluetoothGatt.GATT_SUCCESS) {
+                statusText.post {
+                    statusText.text = getString(R.string.waiting_for_bm64)
+                    checkPermissionAndStart()
+                }
             }
         }
 
