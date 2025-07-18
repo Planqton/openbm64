@@ -74,7 +74,9 @@ class SetupFragment : Fragment() {
 
     private fun loadPairedDevices() {
         val adapter = BluetoothAdapter.getDefaultAdapter()
-        val devices = adapter?.bondedDevices?.map { "${'$'}{it.name} - ${'$'}{it.address}" } ?: emptyList()
+        val devices = adapter?.bondedDevices
+            ?.map { "${it.name} - ${it.address}" }
+            ?: emptyList()
         val arrayAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, devices)
         arrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinner.adapter = arrayAdapter
