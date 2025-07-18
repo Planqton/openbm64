@@ -1,12 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center">
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="16dp">
+
+    <ProgressBar
+        android:id="@+id/progress_wait"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
 
     <TextView
+        android:id="@+id/text_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/title_home" />
-
-</FrameLayout>
+        android:layout_marginTop="8dp"
+        android:text="@string/waiting_for_bm64" />
+</LinearLayout>

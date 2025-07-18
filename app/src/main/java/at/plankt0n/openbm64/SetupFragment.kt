@@ -13,8 +13,10 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.Spinner
+import android.widget.AdapterView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import androidx.preference.PreferenceManager
 
 class SetupFragment : Fragment() {
 
@@ -37,6 +39,19 @@ class SetupFragment : Fragment() {
             startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
         }
         checkPermissionAndLoadDevices()
+
+        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
+                val deviceInfo = parent.getItemAtPosition(position) as String
+                val address = deviceInfo.substringAfterLast(" - ")
+                PreferenceManager.getDefaultSharedPreferences(requireContext())
+                    .edit()
+                    .putString("device_address", address)
+                    .apply()
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>) {}
+        }
     }
 
     private fun checkPermissionAndLoadDevices() {
