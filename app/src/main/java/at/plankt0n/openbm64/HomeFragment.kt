@@ -55,6 +55,7 @@ class HomeFragment : Fragment() {
             }
         }
         if (address == null) return
+        statusText.text = getString(R.string.loading_data_from, address)
         val adapter = BluetoothAdapter.getDefaultAdapter()
         val device = adapter.getRemoteDevice(address)
         gatt = device.connectGatt(requireContext(), false, gattCallback)
