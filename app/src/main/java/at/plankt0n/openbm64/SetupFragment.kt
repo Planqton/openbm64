@@ -38,7 +38,6 @@ class SetupFragment : Fragment() {
         button.setOnClickListener {
             startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
         }
-        checkPermissionAndLoadDevices()
 
         spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>, view: View?, position: Int, id: Long) {
@@ -52,6 +51,8 @@ class SetupFragment : Fragment() {
 
             override fun onNothingSelected(parent: AdapterView<*>) {}
         }
+
+        checkPermissionAndLoadDevices()
     }
 
     private fun checkPermissionAndLoadDevices() {
@@ -95,5 +96,15 @@ class SetupFragment : Fragment() {
         val arrayAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_spinner_item, devices)
         arrayAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spinner.adapter = arrayAdapter
+
+        val firstBm64 = adapter?.bondedDevices?.firstOrNull { it.name.equals("BM64", true) }
+        firstBm64?.let {
+            PreferenceManager.getDefaultSharedPreferences(requireContext())
+                .edit()
+                .putString("device_address", it.address)
+                .apply()
+            val index = devices.indexOf("${it.name} - ${it.address}")
+            if (index >= 0) spinner.setSelection(index)
+        }
     }
 }

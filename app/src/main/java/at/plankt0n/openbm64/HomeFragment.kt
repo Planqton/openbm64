@@ -48,10 +48,22 @@ class HomeFragment : Fragment() {
     private fun startListening() {
         statusText.text = getString(R.string.waiting_for_bm64)
         val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
-        val address = prefs.getString("device_address", null) ?: return
+        var address = prefs.getString("device_address", null)
+        if (address == null) {
+            address = findFirstBm64Address()?.also {
+                prefs.edit().putString("device_address", it).apply()
+            }
+        }
+        if (address == null) return
         val adapter = BluetoothAdapter.getDefaultAdapter()
         val device = adapter.getRemoteDevice(address)
         gatt = device.connectGatt(requireContext(), false, gattCallback)
+    }
+
+    private fun findFirstBm64Address(): String? {
+        val adapter = BluetoothAdapter.getDefaultAdapter() ?: return null
+        val device = adapter.bondedDevices.firstOrNull { it.name.equals("BM64", true) }
+        return device?.address
     }
 
     private val gattCallback = object : BluetoothGattCallback() {
