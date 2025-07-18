@@ -41,12 +41,18 @@ class SetupFragment : Fragment() {
     }
 
     private fun checkPermissionAndLoadDevices() {
+        val requiredPermissions = mutableListOf<String>()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(requireActivity(), arrayOf(Manifest.permission.BLUETOOTH_CONNECT), requestCode)
-            } else {
-                loadPairedDevices()
-            }
+            requiredPermissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+        }
+        requiredPermissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+        requiredPermissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+
+        val missing = requiredPermissions.filter {
+            ContextCompat.checkSelfPermission(requireContext(), it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isNotEmpty()) {
+            ActivityCompat.requestPermissions(requireActivity(), missing.toTypedArray(), requestCode)
         } else {
             loadPairedDevices()
         }
@@ -54,7 +60,7 @@ class SetupFragment : Fragment() {
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == this.requestCode && grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        if (requestCode == this.requestCode && grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
             loadPairedDevices()
         }
     }
