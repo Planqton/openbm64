@@ -13,7 +13,6 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.Spinner
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 
@@ -42,17 +41,25 @@ class SetupFragment : Fragment() {
 
     private fun checkPermissionAndLoadDevices() {
         val requiredPermissions = mutableListOf<String>()
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             requiredPermissions.add(Manifest.permission.BLUETOOTH_CONNECT)
         }
-        requiredPermissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
-        requiredPermissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requiredPermissions.add(Manifest.permission.READ_MEDIA_IMAGES)
+            requiredPermissions.add(Manifest.permission.READ_MEDIA_VIDEO)
+            requiredPermissions.add(Manifest.permission.READ_MEDIA_AUDIO)
+        } else {
+            requiredPermissions.add(Manifest.permission.READ_EXTERNAL_STORAGE)
+            requiredPermissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
 
         val missing = requiredPermissions.filter {
             ContextCompat.checkSelfPermission(requireContext(), it) != PackageManager.PERMISSION_GRANTED
         }
         if (missing.isNotEmpty()) {
-            ActivityCompat.requestPermissions(requireActivity(), missing.toTypedArray(), requestCode)
+            requestPermissions(missing.toTypedArray(), requestCode)
         } else {
             loadPairedDevices()
         }
