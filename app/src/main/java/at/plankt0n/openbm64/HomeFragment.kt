@@ -10,6 +10,8 @@ import android.bluetooth.BluetoothProfile
 import android.util.Log
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -30,6 +32,8 @@ class HomeFragment : Fragment() {
     private val TAG = "HomeFragment"
     private val requestCode = 1002
     private var deviceAddress: String? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private val retryDelayMs = 5000L
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -77,13 +81,16 @@ class HomeFragment : Fragment() {
     private fun startListening() {
         statusText.text = getString(R.string.waiting_for_bm64)
         val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
-        var address = prefs.getString("device_address", null)
+        var address = findFirstBm64Address()
         if (address == null) {
-            address = findFirstBm64Address()?.also {
-                prefs.edit().putString("device_address", it).apply()
-            }
+            address = prefs.getString("device_address", null)
+        } else {
+            prefs.edit().putString("device_address", address).apply()
         }
-        if (address == null) return
+        if (address == null) {
+            handler.postDelayed({ startListening() }, retryDelayMs)
+            return
+        }
         deviceAddress = address
         val adapter = BluetoothAdapter.getDefaultAdapter()
         val device = adapter.getRemoteDevice(address)
@@ -101,17 +108,16 @@ class HomeFragment : Fragment() {
             if (newState == BluetoothProfile.STATE_CONNECTED && status == BluetoothGatt.GATT_SUCCESS) {
                 gatt.discoverServices()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED || status != BluetoothGatt.GATT_SUCCESS) {
-                statusText.post {
-                    statusText.text = getString(R.string.waiting_for_bm64)
-                    checkPermissionAndStart()
-                }
+                gatt.close()
+                statusText.post { statusText.text = getString(R.string.waiting_for_bm64) }
+                handler.postDelayed({ startListening() }, retryDelayMs)
             }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             val service = gatt.services.firstOrNull { it.uuid.toString().equals("00001810-0000-1000-8000-00805f9b34fb", true) }
             val characteristic = service?.getCharacteristic(java.util.UUID.fromString("00002a35-0000-1000-8000-00805f9b34fb"))
-            if (characteristic != null) {
+            if (status == BluetoothGatt.GATT_SUCCESS && characteristic != null) {
                 gatt.setCharacteristicNotification(characteristic, true)
                 characteristic.descriptors.firstOrNull()?.let { desc ->
                     desc.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
@@ -122,7 +128,9 @@ class HomeFragment : Fragment() {
                     statusText.text = getString(R.string.reading_data_from, addr)
                 }
             } else {
-                gatt.disconnect()
+                gatt.close()
+                statusText.post { statusText.text = getString(R.string.waiting_for_bm64) }
+                handler.postDelayed({ startListening() }, retryDelayMs)
             }
         }
 
