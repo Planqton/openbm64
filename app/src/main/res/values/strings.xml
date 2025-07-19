@@ -1,5 +1,5 @@
 <resources>
     <string name="app_name">openBM64</string>
     <string name="title_home">Home</string>
-    <string name="read_measurement">Read measurement</string>
+    <string name="read_measurement">Read stored values</string>
 </resources>
