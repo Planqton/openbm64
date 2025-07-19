@@ -92,6 +92,8 @@ class HomeFragment : Fragment() {
             return
         }
         deviceAddress = address
+        statusText.text = getString(R.string.reading_data_from, address)
+        Log.d(TAG, "Connecting to $address")
         val adapter = BluetoothAdapter.getDefaultAdapter()
         val device = adapter.getRemoteDevice(address)
         gatt = device.connectGatt(requireContext(), false, gattCallback)
