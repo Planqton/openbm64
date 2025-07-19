@@ -5,6 +5,8 @@ import java.nio.ByteOrder
 import java.util.Calendar
 
 object BleParser {
+    private const val TAG = "BleParser"
+
     fun parseMeasurement(data: ByteArray): Measurement? {
         return try {
             var index = 0
@@ -68,6 +70,7 @@ object BleParser {
                 raw = data
             )
         } catch (e: Exception) {
+            android.util.Log.e(TAG, "Parse failed", e)
             null
         }
     }

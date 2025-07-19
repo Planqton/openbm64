@@ -7,6 +7,8 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothProfile
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -19,6 +21,9 @@ import java.util.UUID
 class HomeFragment : Fragment() {
 
     private var gatt: BluetoothGatt? = null
+    private val handler = Handler(Looper.getMainLooper())
+    private val disconnectTimeout = 60_000L
+    private val timeoutRunnable = Runnable { gatt?.disconnect() }
     private val deviceAddress = "A4:C1:38:A5:20:BB"
     private val serviceUuid = UUID.fromString("00001810-0000-1000-8000-00805f9b34fb")
     private val measUuid = UUID.fromString("00002a35-0000-1000-8000-00805f9b34fb")
@@ -36,6 +41,7 @@ class HomeFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        handler.removeCallbacks(timeoutRunnable)
         gatt?.close()
     }
 
@@ -43,6 +49,7 @@ class HomeFragment : Fragment() {
         val adapter = BluetoothAdapter.getDefaultAdapter()
         val device = adapter.getRemoteDevice(deviceAddress)
         gatt = device.connectGatt(requireContext(), false, gattCallback)
+        handler.postDelayed(timeoutRunnable, disconnectTimeout)
     }
 
     private val gattCallback = object : BluetoothGattCallback() {
@@ -77,13 +84,16 @@ class HomeFragment : Fragment() {
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             if (characteristic.uuid == measUuid) {
                 val data = characteristic.value
+                val hex = data.joinToString(" ") { String.format("%02X", it) }
+                Log.d(TAG, "Notification: $hex")
                 val m = BleParser.parseMeasurement(data)
                 if (m != null) {
                     Log.i(TAG, "Measurement: $m")
+                    handler.removeCallbacks(timeoutRunnable)
+                    gatt.disconnect()
                 } else {
                     Log.e(TAG, "Failed to parse measurement")
                 }
-                gatt.disconnect()
             }
         }
     }
