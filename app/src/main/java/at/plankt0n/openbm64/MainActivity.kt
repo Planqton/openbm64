@@ -27,26 +27,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         bottomNav.setOnItemSelectedListener { item ->
-            when (item.itemId) {
-                R.id.navigation_home -> {
-                    supportFragmentManager.beginTransaction()
-                        .replace(R.id.fragment_container, HomeFragment())
-                        .commit()
-                    true
-                }
-                R.id.navigation_setup -> {
-                    supportFragmentManager.beginTransaction()
-                        .replace(R.id.fragment_container, SetupFragment())
-                        .commit()
-                    true
-                }
-                R.id.navigation_third -> {
-                    supportFragmentManager.beginTransaction()
-                        .replace(R.id.fragment_container, ThirdFragment())
-                        .commit()
-                    true
-                }
-                else -> false
+            if (item.itemId == R.id.navigation_home) {
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, HomeFragment())
+                    .commit()
+                true
+            } else {
+                false
             }
         }
     }

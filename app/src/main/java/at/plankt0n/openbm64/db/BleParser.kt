@@ -31,7 +31,7 @@ object BleParser {
                 diastolic = Math.round(diastolic * 7.50062f)
                 mapVal *= 7.50062
             }
-            mapVal = String.format("%.2f", mapVal).toDouble()
+            mapVal = Math.round(mapVal * 100.0) / 100.0
 
             val timestamp = if (timestampPresent) {
                 val year = bb.short.toInt()

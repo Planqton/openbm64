@@ -1,7 +1,5 @@
 <resources>
     <string name="app_name">openBM64</string>
     <string name="title_home">Home</string>
-    <string name="title_setup">Setup</string>
-    <string name="title_third">Third</string>
     <string name="read_measurement">Read measurement</string>
 </resources>

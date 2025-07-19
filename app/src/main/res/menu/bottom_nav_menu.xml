@@ -4,12 +4,4 @@
         android:id="@+id/navigation_home"
         android:icon="@android:drawable/ic_menu_view"
         android:title="@string/title_home" />
-    <item
-        android:id="@+id/navigation_setup"
-        android:icon="@android:drawable/ic_menu_manage"
-        android:title="@string/title_setup" />
-    <item
-        android:id="@+id/navigation_third"
-        android:icon="@android:drawable/ic_menu_info_details"
-        android:title="@string/title_third" />
 </menu>
