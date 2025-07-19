@@ -63,10 +63,16 @@ class SettingsFragment : Fragment() {
         externalLayout = view.findViewById(R.id.layout_external)
         externalPath = view.findViewById(R.id.text_external_path)
 
-        saveExternalSwitch.isChecked = prefs.getBoolean(KEY_SAVE_EXTERNAL, false)
-        externalLayout.isVisible = saveExternalSwitch.isChecked
+        val dir = prefs.getString(KEY_DIR, null)
+        val enabledPref = prefs.getBoolean(KEY_SAVE_EXTERNAL, false)
+        val enabled = enabledPref && dir != null
+        if (enabled != enabledPref) {
+            prefs.edit().putBoolean(KEY_SAVE_EXTERNAL, enabled).apply()
+        }
+        saveExternalSwitch.isChecked = enabled
+        externalLayout.isVisible = enabled
 
-        prefs.getString(KEY_DIR, null)?.let { updateExternalPath(Uri.parse(it)) }
+        dir?.let { updateExternalPath(Uri.parse(it)) }
 
         saveExternalSwitch.setOnCheckedChangeListener { _, isChecked ->
             if (updatingSwitch) return@setOnCheckedChangeListener

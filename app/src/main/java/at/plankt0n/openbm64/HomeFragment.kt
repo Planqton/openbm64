@@ -169,7 +169,8 @@ class HomeFragment : Fragment() {
     }
 
     private fun exportCsv(m: Measurement) {
-        val line = "${m.timestamp},${m.systole},${m.diastole},${m.map},${m.pulse ?: ""}\n"
+        val rawHex = m.raw.joinToString("") { String.format("%02X", it) }
+        val line = "${m.timestamp},${m.systole},${m.diastole},${m.map},${m.pulse ?: ""},$rawHex\n"
         // always write to internal file
         requireContext().openFileOutput("measurements.csv", Context.MODE_APPEND).use {
             it.write(line.toByteArray())

@@ -18,14 +18,19 @@ class HistoryFragment : Fragment() {
     private fun parseCsvLine(line: String): Measurement? {
         val parts = line.split(",")
         if (parts.size < 4) return null
-        val pulse = parts.getOrNull(4)?.toIntOrNull()
+        val pulse = parts.getOrNull(4)?.takeIf { it.isNotEmpty() }?.toIntOrNull()
+        val raw = if (parts.size > 5) {
+            parts[5].chunked(2).mapNotNull {
+                it.toIntOrNull(16)?.toByte()
+            }.toByteArray()
+        } else ByteArray(0)
         return Measurement(
             timestamp = parts[0],
             systole = parts[1].toIntOrNull() ?: return null,
             diastole = parts[2].toIntOrNull() ?: return null,
             map = parts[3].toDoubleOrNull() ?: return null,
             pulse = pulse,
-            raw = ByteArray(0)
+            raw = raw
         )
     }
 
