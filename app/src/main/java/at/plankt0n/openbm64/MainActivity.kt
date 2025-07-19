@@ -7,7 +7,6 @@ import android.os.Bundle
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity : AppCompatActivity() {
 
@@ -19,22 +18,10 @@ class MainActivity : AppCompatActivity() {
 
         checkAndRequestPermissions()
 
-        val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
         if (savedInstanceState == null) {
             supportFragmentManager.beginTransaction()
                 .replace(R.id.fragment_container, HomeFragment())
                 .commit()
-        }
-
-        bottomNav.setOnItemSelectedListener { item ->
-            if (item.itemId == R.id.navigation_home) {
-                supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, HomeFragment())
-                    .commit()
-                true
-            } else {
-                false
-            }
         }
     }
 

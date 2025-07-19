@@ -54,11 +54,23 @@ class HomeFragment : Fragment() {
 
     private val gattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
-            if (newState == BluetoothProfile.STATE_CONNECTED && status == BluetoothGatt.GATT_SUCCESS) {
-                gatt.discoverServices()
-            } else {
-                Log.e(TAG, "Connection failed: $status")
-                gatt.close()
+            when (newState) {
+                BluetoothProfile.STATE_CONNECTED -> {
+                    if (status == BluetoothGatt.GATT_SUCCESS) {
+                        gatt.discoverServices()
+                    } else {
+                        Log.e(TAG, "Connection failed: $status")
+                        gatt.close()
+                    }
+                }
+                BluetoothProfile.STATE_DISCONNECTED -> {
+                    Log.d(TAG, "Disconnected with status $status")
+                    gatt.close()
+                }
+                else -> if (status != BluetoothGatt.GATT_SUCCESS) {
+                    Log.e(TAG, "Error state $newState status $status")
+                    gatt.close()
+                }
             }
         }
 
