@@ -117,14 +117,28 @@ class HomeFragment : Fragment() {
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 val service = gatt.getService(java.util.UUID.fromString("00001810-0000-1000-8000-00805f9b34fb"))
-                val characteristic = service?.getCharacteristic(java.util.UUID.fromString("00002a35-0000-1000-8000-00805f9b34fb"))
-                if (characteristic != null) {
-                    gatt.setCharacteristicNotification(characteristic, true)
-                    val desc = characteristic.getDescriptor(java.util.UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
-                    desc?.let {
+                val measChar = service?.getCharacteristic(java.util.UUID.fromString("00002a35-0000-1000-8000-00805f9b34fb"))
+                val racpChar = service?.getCharacteristic(java.util.UUID.fromString("00002a52-0000-1000-8000-00805f9b34fb"))
+
+                if (measChar != null && racpChar != null) {
+                    // Enable indications on Blood Pressure Measurement
+                    gatt.setCharacteristicNotification(measChar, true)
+                    measChar.getDescriptor(java.util.UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))?.let {
                         it.value = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
                         gatt.writeDescriptor(it)
                     }
+
+                    // Enable indications on Record Access Control Point
+                    gatt.setCharacteristicNotification(racpChar, true)
+                    racpChar.getDescriptor(java.util.UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))?.let {
+                        it.value = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
+                        gatt.writeDescriptor(it)
+                    }
+
+                    // Request all stored records
+                    racpChar.value = byteArrayOf(0x01, 0x01)
+                    gatt.writeCharacteristic(racpChar)
+
                     statusText.post {
                         val addr = deviceAddress ?: ""
                         statusText.text = getString(R.string.reading_data_from, addr)
@@ -138,12 +152,21 @@ class HomeFragment : Fragment() {
         }
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
-            if (characteristic.uuid.toString().equals("00002a35-0000-1000-8000-00805f9b34fb", true)) {
-                val data = characteristic.value
-                val m = BleParser.parseMeasurement(data)
-                m?.let {
-                    Log.d(TAG, "Fetched blood pressure: ${'$'}{it.systole}/${'$'}{it.diastole} mmHg")
-                    dbHelper.insertMeasurement(it)
+            when (characteristic.uuid.toString().lowercase()) {
+                "00002a35-0000-1000-8000-00805f9b34fb" -> {
+                    val data = characteristic.value
+                    val m = BleParser.parseMeasurement(data)
+                    m?.let {
+                        Log.d(TAG, "Fetched blood pressure: ${'$'}{it.systole}/${'$'}{it.diastole} mmHg")
+                        dbHelper.insertMeasurement(it)
+                    }
+                }
+                "00002a52-0000-1000-8000-00805f9b34fb" -> {
+                    val data = characteristic.value
+                    if (data.isNotEmpty() && data[0].toInt() == 0x06) {
+                        statusText.post { statusText.text = getString(R.string.waiting_for_bm64) }
+                        handler.postDelayed({ startListening() }, retryDelayMs)
+                    }
                 }
             }
         }
