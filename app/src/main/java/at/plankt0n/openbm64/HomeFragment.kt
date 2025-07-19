@@ -20,6 +20,9 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.core.content.ContextCompat
 import androidx.preference.PreferenceManager
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import at.plankt0n.openbm64.db.BleParser
 import at.plankt0n.openbm64.db.MeasurementDbHelper
 
@@ -27,6 +30,7 @@ class HomeFragment : Fragment() {
 
     private lateinit var progressBar: ProgressBar
     private lateinit var statusText: TextView
+    private lateinit var lastSyncText: TextView
     private var gatt: BluetoothGatt? = null
     private lateinit var dbHelper: MeasurementDbHelper
     private val TAG = "HomeFragment"
@@ -47,7 +51,14 @@ class HomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         progressBar = view.findViewById(R.id.progress_wait)
         statusText = view.findViewById(R.id.text_status)
+        lastSyncText = view.findViewById(R.id.text_last_sync)
         dbHelper = MeasurementDbHelper(requireContext())
+
+        val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
+        val last = prefs.getString("last_sync", null)
+        last?.let {
+            lastSyncText.text = getString(R.string.last_successful_sync, it)
+        }
         checkPermissionAndStart()
     }
 
@@ -140,8 +151,7 @@ class HomeFragment : Fragment() {
                     gatt.writeCharacteristic(racpChar)
 
                     statusText.post {
-                        val addr = deviceAddress ?: ""
-                        statusText.text = getString(R.string.reading_data_from, addr)
+                        statusText.text = getString(R.string.syncing_bm64)
                     }
                     return
                 }
@@ -164,6 +174,12 @@ class HomeFragment : Fragment() {
                 "00002a52-0000-1000-8000-00805f9b34fb" -> {
                     val data = characteristic.value
                     if (data.isNotEmpty() && data[0].toInt() == 0x06) {
+                        val ts = SimpleDateFormat("dd.MM.yy HH:mm:ss", Locale.getDefault()).format(Date())
+                        val prefs = PreferenceManager.getDefaultSharedPreferences(this@HomeFragment.requireContext())
+                        prefs.edit().putString("last_sync", ts).apply()
+                        lastSyncText.post {
+                            lastSyncText.text = getString(R.string.last_successful_sync, ts)
+                        }
                         statusText.post { statusText.text = getString(R.string.waiting_for_bm64) }
                         handler.postDelayed({ startListening() }, retryDelayMs)
                     }

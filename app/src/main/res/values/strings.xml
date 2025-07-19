@@ -6,4 +6,6 @@
     <string name="bluetooth_settings">Bluetooth Einstellungen</string>
     <string name="waiting_for_bm64">Warte auf BM64...</string>
     <string name="reading_data_from">Lese Daten von Gerät %1$s...</string>
+    <string name="syncing_bm64">Synchronisiere BM64...</string>
+    <string name="last_successful_sync">Letzte erfolgreiche Synchronisierung %1$s</string>
 </resources>
