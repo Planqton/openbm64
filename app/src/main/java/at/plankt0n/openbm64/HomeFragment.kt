@@ -17,7 +17,12 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.BleParser
+import at.plankt0n.openbm64.db.Measurement
 import at.plankt0n.openbm64.db.MeasurementDbHelper
+import androidx.documentfile.provider.DocumentFile
+import android.content.Context
+import android.content.SharedPreferences
+import android.net.Uri
 import java.util.UUID
 
 class HomeFragment : Fragment() {
@@ -36,6 +41,7 @@ class HomeFragment : Fragment() {
     private val TAG = "HomeFragment"
     private var logView: TextView? = null
     private var dbHelper: MeasurementDbHelper? = null
+    private var prefs: SharedPreferences? = null
 
     private fun appendLog(text: String) {
         activity?.runOnUiThread {
@@ -52,6 +58,7 @@ class HomeFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_home, container, false)
         view.findViewById<Button>(R.id.button_read).setOnClickListener { startReadingHistory() }
         dbHelper = MeasurementDbHelper(requireContext())
+        prefs = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
         logView = view.findViewById(R.id.text_log)
         return view
     }
@@ -62,6 +69,7 @@ class HomeFragment : Fragment() {
         gatt?.close()
         logView = null
         dbHelper = null
+        prefs = null
     }
 
     private fun startReadingHistory() {
@@ -149,12 +157,30 @@ class HomeFragment : Fragment() {
                     if (m != null) {
                         Log.i(TAG, "Measurement: $m")
                         dbHelper?.insertMeasurement(m)
+                        exportCsv(m)
                         appendLog(m.toString())
                     } else {
                         Log.e(TAG, "Failed to parse measurement")
                         appendLog("Failed to parse measurement")
                     }
                 }
+            }
+        }
+    }
+
+    private fun exportCsv(m: Measurement) {
+        val p = prefs ?: return
+        if (!p.getBoolean(SettingsFragment.KEY_SAVE_EXTERNAL, false)) return
+        val dirUri = p.getString(SettingsFragment.KEY_DIR, null) ?: return
+        val dir = DocumentFile.fromTreeUri(requireContext(), Uri.parse(dirUri)) ?: return
+        var file = dir.findFile("measurements.csv")
+        if (file == null) {
+            file = dir.createFile("text/csv", "measurements.csv")
+        }
+        file?.uri?.let { uri ->
+            requireContext().contentResolver.openOutputStream(uri, "wa")?.use { out ->
+                val line = "${m.timestamp},${m.systole},${m.diastole},${m.map},${m.pulse ?: ""}\n"
+                out.write(line.toByteArray())
             }
         }
     }
