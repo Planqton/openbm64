@@ -13,7 +13,6 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.BleParser
@@ -33,6 +32,17 @@ class HomeFragment : Fragment() {
     private val timeoutRunnable = Runnable {
         appendLog("Timeout - disconnecting")
         gatt?.disconnect()
+    }
+    private val retryDelay = 10_000L
+    private var autoRunning = false
+    private val connectRunnable = object : Runnable {
+        override fun run() {
+            if (!autoRunning) return
+            if (gatt == null) {
+                startReadingHistory()
+            }
+            handler.postDelayed(this, retryDelay)
+        }
     }
     private val deviceAddress = "A4:C1:38:A5:20:BB"
     private val serviceUuid = UUID.fromString("00001810-0000-1000-8000-00805f9b34fb")
@@ -56,16 +66,32 @@ class HomeFragment : Fragment() {
         savedInstanceState: Bundle?,
     ): View {
         val view = inflater.inflate(R.layout.fragment_home, container, false)
-        view.findViewById<Button>(R.id.button_read).setOnClickListener { startReadingHistory() }
         dbHelper = MeasurementDbHelper(requireContext())
         prefs = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
         logView = view.findViewById(R.id.text_log)
         return view
     }
 
+    override fun onResume() {
+        super.onResume()
+        autoRunning = true
+        handler.post(connectRunnable)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        autoRunning = false
+        handler.removeCallbacks(connectRunnable)
+        handler.removeCallbacks(timeoutRunnable)
+        gatt?.close()
+        gatt = null
+    }
+
     override fun onDestroyView() {
         super.onDestroyView()
         handler.removeCallbacks(timeoutRunnable)
+        handler.removeCallbacks(connectRunnable)
+        autoRunning = false
         gatt?.close()
         logView = null
         dbHelper = null
@@ -75,7 +101,6 @@ class HomeFragment : Fragment() {
     private fun startReadingHistory() {
         val adapter = BluetoothAdapter.getDefaultAdapter()
         val device = adapter.getRemoteDevice(deviceAddress)
-        logView?.text = ""
         appendLog("Connecting...")
         gatt = device.connectGatt(requireContext(), false, gattCallback)
     }
@@ -91,6 +116,7 @@ class HomeFragment : Fragment() {
                         Log.e(TAG, "Connection failed: $status")
                         appendLog("Connection failed: $status")
                         gatt.close()
+                    this@HomeFragment.gatt = null
                     }
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
@@ -98,11 +124,13 @@ class HomeFragment : Fragment() {
                     appendLog("Disconnected")
                     handler.removeCallbacks(timeoutRunnable)
                     gatt.close()
+                    this@HomeFragment.gatt = null
                 }
                 else -> if (status != BluetoothGatt.GATT_SUCCESS) {
                     Log.e(TAG, "Error state $newState status $status")
                     appendLog("Error: $status")
                     gatt.close()
+                    this@HomeFragment.gatt = null
                 }
             }
         }
