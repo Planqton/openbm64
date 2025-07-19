@@ -253,6 +253,7 @@ class HomeFragment : Fragment() {
             override fun run() {
                 remaining--
                 if (remaining <= 0) {
+                    activity?.runOnUiThread { logView?.text = "" }
                     showWaiting()
                     if (autoRunning) handler.post(connectRunnable)
                     countdown = null
