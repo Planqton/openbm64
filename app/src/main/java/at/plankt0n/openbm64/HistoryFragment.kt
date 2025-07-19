@@ -10,7 +10,6 @@ import android.widget.ListView
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.Measurement
-import at.plankt0n.openbm64.db.MeasurementDbHelper
 import java.io.File
 
 class HistoryFragment : Fragment() {
@@ -55,10 +54,6 @@ class HistoryFragment : Fragment() {
                     lines.mapNotNull { parseCsvLine(it) }.forEach { list.add(it) }
                 }
             }
-        }
-        if (list.isEmpty()) {
-            val dbHelper = MeasurementDbHelper(requireContext())
-            list.addAll(dbHelper.getAll())
         }
         return list
     }

@@ -6,7 +6,7 @@
     <string name="nav_history">Historie</string>
     <string name="nav_settings">Einstellungen</string>
     <string name="save_external">Save Measurements Externally</string>
-    <string name="choose_folder">Choose Folder</string>
+    <string name="choose_folder">Change Folder</string>
     <string name="no_folder_selected">No folder selected</string>
     <string name="clear_db">Clear Database</string>
     <string name="confirm_delete">Delete all measurements?</string>

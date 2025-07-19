@@ -34,14 +34,19 @@ class SettingsFragment : Fragment() {
                 val flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or
                         Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 requireContext().contentResolver.takePersistableUriPermission(uri, flags)
+
+                val previous = prefs.getString(KEY_DIR, null)
                 prefs.edit().putString(KEY_DIR, uri.toString()).apply()
                 updateExternalPath(uri)
+
                 if (pendingEnable) {
                     moveFileToExternal(uri)
                     prefs.edit().putBoolean(KEY_SAVE_EXTERNAL, true).apply()
                     externalLayout.isVisible = true
                     setSwitchChecked(true)
                     pendingEnable = false
+                } else if (prefs.getBoolean(KEY_SAVE_EXTERNAL, false) && previous != null && previous != uri.toString()) {
+                    moveExternalFile(Uri.parse(previous), uri)
                 }
             } else if (pendingEnable) {
                 // user cancelled folder selection
@@ -182,6 +187,24 @@ class SettingsFragment : Fragment() {
             internal.outputStream().use { output -> input.copyTo(output) }
         }
         file.delete()
+    }
+
+    private fun moveExternalFile(fromUri: Uri, toUri: Uri) {
+        val fromDir = DocumentFile.fromTreeUri(requireContext(), fromUri) ?: return
+        val toDir = DocumentFile.fromTreeUri(requireContext(), toUri) ?: return
+        val src = fromDir.findFile("measurements.csv") ?: return
+        var dst = toDir.findFile("measurements.csv")
+        if (dst == null) {
+            dst = toDir.createFile("text/csv", "measurements.csv")
+        }
+        dst?.let { dest ->
+            requireContext().contentResolver.openInputStream(src.uri)?.use { input ->
+                requireContext().contentResolver.openOutputStream(dest.uri, "w")?.use { output ->
+                    input.copyTo(output)
+                }
+            }
+            src.delete()
+        }
     }
 
     companion object {
