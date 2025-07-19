@@ -1,6 +1,6 @@
 # openBM64
 
-Simple Android app to read stored blood pressure measurements from a paired Beurer BM64 Bluetooth monitor.
+Simple Android app to read blood pressure measurements from a paired Beurer BM64 Bluetooth monitor.
 
 ## Prerequisites
 
@@ -15,7 +15,7 @@ Clone the repository and open it in Android Studio. The project uses the Gradle 
 1. Connect an Android phone with developer mode enabled.
 2. Select `Run > Run 'app'` in Android Studio.
 
-Press the button on the main screen to connect to the paired BM64 and log all measurements stored on the device.
+Press the button on the main screen to connect to the paired BM64 and log any measurement notifications for about a minute.
 
 ## Python helper
 

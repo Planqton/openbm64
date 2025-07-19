@@ -24,13 +24,14 @@ class HomeFragment : Fragment() {
     private var gatt: BluetoothGatt? = null
     private val handler = Handler(Looper.getMainLooper())
     private val disconnectTimeout = 60_000L
-    private val timeoutRunnable = Runnable { gatt?.disconnect() }
+    private val timeoutRunnable = Runnable {
+        appendLog("Timeout - disconnecting")
+        gatt?.disconnect()
+    }
     private val deviceAddress = "A4:C1:38:A5:20:BB"
     private val serviceUuid = UUID.fromString("00001810-0000-1000-8000-00805f9b34fb")
     private val measUuid = UUID.fromString("00002a35-0000-1000-8000-00805f9b34fb")
-    private val racpUuid = UUID.fromString("00002a52-0000-1000-8000-00805f9b34fb")
     private val cccUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
-    private var descriptorsWritten = 0
     private val TAG = "HomeFragment"
     private var logView: TextView? = null
 
@@ -62,10 +63,9 @@ class HomeFragment : Fragment() {
     private fun startReadingHistory() {
         val adapter = BluetoothAdapter.getDefaultAdapter()
         val device = adapter.getRemoteDevice(deviceAddress)
-        gatt = device.connectGatt(requireContext(), false, gattCallback)
-        handler.postDelayed(timeoutRunnable, disconnectTimeout)
-        descriptorsWritten = 0
         logView?.text = ""
+        appendLog("Connecting...")
+        gatt = device.connectGatt(requireContext(), false, gattCallback)
     }
 
     private val gattCallback = object : BluetoothGattCallback() {
@@ -84,6 +84,7 @@ class HomeFragment : Fragment() {
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     Log.d(TAG, "Disconnected with status $status")
                     appendLog("Disconnected")
+                    handler.removeCallbacks(timeoutRunnable)
                     gatt.close()
                 }
                 else -> if (status != BluetoothGatt.GATT_SUCCESS) {
@@ -103,21 +104,19 @@ class HomeFragment : Fragment() {
             }
             val service = gatt.getService(serviceUuid)
             val measChar = service?.getCharacteristic(measUuid)
-            val racpChar = service?.getCharacteristic(racpUuid)
-            if (measChar == null || racpChar == null) {
-                Log.e(TAG, "Required characteristics not found")
+            if (measChar == null) {
+                Log.e(TAG, "Measurement characteristic not found")
+                appendLog("Characteristic missing")
                 gatt.disconnect()
                 return
             }
             gatt.setCharacteristicNotification(measChar, true)
-            gatt.setCharacteristicNotification(racpChar, true)
             measChar.getDescriptor(cccUuid)?.let {
                 it.value = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
                 gatt.writeDescriptor(it)
-            }
-            racpChar.getDescriptor(cccUuid)?.let {
-                it.value = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
-                gatt.writeDescriptor(it)
+            } ?: run {
+                appendLog("Descriptor missing")
+                gatt.disconnect()
             }
         }
 
@@ -127,14 +126,12 @@ class HomeFragment : Fragment() {
             status: Int
         ) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                descriptorsWritten++
-                if (descriptorsWritten == 2) {
-                    appendLog("Reading records...")
-                    requestAllRecords(gatt)
-                }
+                appendLog("Notifications enabled")
+                handler.postDelayed(timeoutRunnable, disconnectTimeout)
             } else {
                 Log.e(TAG, "Descriptor write failed: $status")
                 appendLog("Descriptor error: $status")
+                gatt.disconnect()
             }
         }
 
@@ -153,25 +150,6 @@ class HomeFragment : Fragment() {
                         appendLog("Failed to parse measurement")
                     }
                 }
-                racpUuid -> {
-                    val data = characteristic.value
-                    val hex = data.joinToString(" ") { String.format("%02X", it) }
-                    Log.d(TAG, "RACP: $hex")
-                    if (data.size >= 3 && data[0].toInt() == 0x06 && data[2].toInt() == 0x01) {
-                        handler.removeCallbacks(timeoutRunnable)
-                        appendLog("Finished reading")
-                        gatt.disconnect()
-                    }
-                }
-            }
-        }
-
-        private fun requestAllRecords(gatt: BluetoothGatt) {
-            val charac = gatt.getService(serviceUuid)?.getCharacteristic(racpUuid) ?: return
-            charac.value = byteArrayOf(0x01, 0x01)
-            if (!gatt.writeCharacteristic(charac)) {
-                Log.e(TAG, "Failed to write RACP")
-                appendLog("Failed to request records")
             }
         }
     }
