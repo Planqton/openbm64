@@ -17,7 +17,7 @@ import androidx.core.view.isVisible
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.MeasurementDbHelper
-import java.io.File
+import at.plankt0n.openbm64.StorageHelper
 
 class SettingsFragment : Fragment() {
 
@@ -145,7 +145,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun deleteCsv() {
-        File(requireContext().filesDir, "measurements.csv").delete()
+        StorageHelper.internalCsvFile(requireContext()).delete()
         val dirUri = prefs.getString(KEY_DIR, null)
         if (dirUri != null) {
             val dir = DocumentFile.fromTreeUri(requireContext(), Uri.parse(dirUri)) ?: return
@@ -164,7 +164,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun moveFileToExternal(uri: Uri) {
-        val internal = File(requireContext().filesDir, "measurements.csv")
+        val internal = StorageHelper.internalCsvFile(requireContext())
         if (!internal.exists()) return
         val dir = DocumentFile.fromTreeUri(requireContext(), uri) ?: return
         var file = dir.findFile("measurements.csv")
@@ -180,7 +180,7 @@ class SettingsFragment : Fragment() {
     }
 
     private fun moveFileToInternal(uri: Uri) {
-        val internal = File(requireContext().filesDir, "measurements.csv")
+        val internal = StorageHelper.internalCsvFile(requireContext())
         val dir = DocumentFile.fromTreeUri(requireContext(), uri) ?: return
         val file = dir.findFile("measurements.csv") ?: return
         requireContext().contentResolver.openInputStream(file.uri)?.use { input ->

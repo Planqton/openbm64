@@ -22,6 +22,7 @@ import androidx.documentfile.provider.DocumentFile
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
+import at.plankt0n.openbm64.StorageHelper
 import java.util.UUID
 
 class HomeFragment : Fragment() {
@@ -198,11 +199,10 @@ class HomeFragment : Fragment() {
 
     private fun exportCsv(m: Measurement) {
         val rawHex = m.raw.joinToString("") { String.format("%02X", it) }
-        val line = "${m.timestamp},${m.systole},${m.diastole},${m.map},${m.pulse ?: ""},$rawHex\n"
-        // always write to internal file
-        requireContext().openFileOutput("measurements.csv", Context.MODE_APPEND).use {
-            it.write(line.toByteArray())
-        }
+        val line = "${'$'}{m.timestamp},${'$'}{m.systole},${'$'}{m.diastole},${'$'}{m.map},${'$'}{m.pulse ?: ""},${'$'}rawHex\n"
+        // always write to internal file under Android/media
+        val internal = StorageHelper.internalCsvFile(requireContext())
+        internal.appendText(line)
 
         val p = prefs ?: return
         if (!p.getBoolean(SettingsFragment.KEY_SAVE_EXTERNAL, false)) return

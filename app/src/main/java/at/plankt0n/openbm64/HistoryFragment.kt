@@ -10,7 +10,7 @@ import android.widget.ListView
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.Measurement
-import java.io.File
+import at.plankt0n.openbm64.StorageHelper
 
 class HistoryFragment : Fragment() {
 
@@ -48,7 +48,7 @@ class HistoryFragment : Fragment() {
                 }
             }
         } else {
-            val file = File(requireContext().filesDir, "measurements.csv")
+            val file = StorageHelper.internalCsvFile(requireContext())
             if (file.exists()) {
                 file.bufferedReader().useLines { lines ->
                     lines.mapNotNull { parseCsvLine(it) }.forEach { list.add(it) }
