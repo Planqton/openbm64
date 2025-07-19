@@ -17,6 +17,7 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.BleParser
+import at.plankt0n.openbm64.db.MeasurementDbHelper
 import java.util.UUID
 
 class HomeFragment : Fragment() {
@@ -34,6 +35,7 @@ class HomeFragment : Fragment() {
     private val cccUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     private val TAG = "HomeFragment"
     private var logView: TextView? = null
+    private var dbHelper: MeasurementDbHelper? = null
 
     private fun appendLog(text: String) {
         activity?.runOnUiThread {
@@ -49,6 +51,13 @@ class HomeFragment : Fragment() {
     ): View {
         val view = inflater.inflate(R.layout.fragment_home, container, false)
         view.findViewById<Button>(R.id.button_read).setOnClickListener { startReadingHistory() }
+        view.findViewById<Button>(R.id.button_history).setOnClickListener {
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, HistoryFragment())
+                .addToBackStack(null)
+                .commit()
+        }
+        dbHelper = MeasurementDbHelper(requireContext())
         logView = view.findViewById(R.id.text_log)
         return view
     }
@@ -58,6 +67,7 @@ class HomeFragment : Fragment() {
         handler.removeCallbacks(timeoutRunnable)
         gatt?.close()
         logView = null
+        dbHelper = null
     }
 
     private fun startReadingHistory() {
@@ -144,6 +154,7 @@ class HomeFragment : Fragment() {
                     val m = BleParser.parseMeasurement(data)
                     if (m != null) {
                         Log.i(TAG, "Measurement: $m")
+                        dbHelper?.insertMeasurement(m)
                         appendLog(m.toString())
                     } else {
                         Log.e(TAG, "Failed to parse measurement")
