@@ -11,4 +11,7 @@
     <string name="confirm_delete">Delete all measurements?</string>
     <string name="confirm_switch_external">Switch to external storage and move file?</string>
     <string name="confirm_switch_internal">Switch to internal storage and move file?</string>
+    <string name="status_wait_device">Warte auf BM64...</string>
+    <string name="status_loading_from">Lade Dateien von %1$s</string>
+    <string name="status_wait_seconds">Warte %1$d Sekunden...</string>
 </resources>
