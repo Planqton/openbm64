@@ -23,6 +23,7 @@ import androidx.preference.PreferenceManager
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import at.plankt0n.openbm64.util.ExcelExporter
 import at.plankt0n.openbm64.db.BleParser
 import at.plankt0n.openbm64.db.MeasurementDbHelper
 
@@ -169,6 +170,7 @@ class HomeFragment : Fragment() {
                     m?.let {
                         Log.d(TAG, "Fetched blood pressure: ${'$'}{it.systole}/${'$'}{it.diastole} mmHg")
                         dbHelper.insertMeasurement(it)
+                        ExcelExporter.appendMeasurement(requireContext(), it)
                     }
                 }
                 "00002a52-0000-1000-8000-00805f9b34fb" -> {
