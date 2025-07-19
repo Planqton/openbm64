@@ -13,10 +13,17 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
 import android.widget.TextView
+import android.widget.ProgressBar
 import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.BleParser
+import at.plankt0n.openbm64.db.Measurement
+import at.plankt0n.openbm64.db.MeasurementDbHelper
+import androidx.documentfile.provider.DocumentFile
+import android.content.Context
+import android.content.SharedPreferences
+import android.net.Uri
+import at.plankt0n.openbm64.StorageHelper
 import java.util.UUID
 
 class HomeFragment : Fragment() {
@@ -28,12 +35,23 @@ class HomeFragment : Fragment() {
         appendLog("Timeout - disconnecting")
         gatt?.disconnect()
     }
+    private val retryDelay = 10_000L
+    private var autoRunning = false
+    private val connectRunnable = Runnable {
+        if (!autoRunning || gatt != null) return@Runnable
+        startReadingHistory()
+    }
     private val deviceAddress = "A4:C1:38:A5:20:BB"
     private val serviceUuid = UUID.fromString("00001810-0000-1000-8000-00805f9b34fb")
     private val measUuid = UUID.fromString("00002a35-0000-1000-8000-00805f9b34fb")
     private val cccUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     private val TAG = "HomeFragment"
     private var logView: TextView? = null
+    private var statusView: TextView? = null
+    private var progress: ProgressBar? = null
+    private var countdown: Runnable? = null
+    private var dbHelper: MeasurementDbHelper? = null
+    private var prefs: SharedPreferences? = null
 
     private fun appendLog(text: String) {
         activity?.runOnUiThread {
@@ -48,23 +66,50 @@ class HomeFragment : Fragment() {
         savedInstanceState: Bundle?,
     ): View {
         val view = inflater.inflate(R.layout.fragment_home, container, false)
-        view.findViewById<Button>(R.id.button_read).setOnClickListener { startReadingHistory() }
+        dbHelper = MeasurementDbHelper(requireContext())
+        prefs = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
         logView = view.findViewById(R.id.text_log)
+        statusView = view.findViewById(R.id.text_status)
+        progress = view.findViewById(R.id.progress)
         return view
+    }
+
+    override fun onResume() {
+        super.onResume()
+        autoRunning = true
+        showWaiting()
+        handler.post(connectRunnable)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        autoRunning = false
+        handler.removeCallbacks(connectRunnable)
+        handler.removeCallbacks(timeoutRunnable)
+        countdown?.let { handler.removeCallbacks(it) }
+        gatt?.close()
+        gatt = null
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
         handler.removeCallbacks(timeoutRunnable)
+        handler.removeCallbacks(connectRunnable)
+        countdown?.let { handler.removeCallbacks(it) }
+        autoRunning = false
         gatt?.close()
         logView = null
+        statusView = null
+        progress = null
+        dbHelper = null
+        prefs = null
     }
 
     private fun startReadingHistory() {
         val adapter = BluetoothAdapter.getDefaultAdapter()
         val device = adapter.getRemoteDevice(deviceAddress)
-        logView?.text = ""
         appendLog("Connecting...")
+        showWaiting()
         gatt = device.connectGatt(requireContext(), false, gattCallback)
     }
 
@@ -74,11 +119,13 @@ class HomeFragment : Fragment() {
                 BluetoothProfile.STATE_CONNECTED -> {
                     if (status == BluetoothGatt.GATT_SUCCESS) {
                         appendLog("Connected")
+                        showLoading()
                         gatt.discoverServices()
                     } else {
                         Log.e(TAG, "Connection failed: $status")
                         appendLog("Connection failed: $status")
                         gatt.close()
+                        this@HomeFragment.gatt = null
                     }
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
@@ -86,11 +133,15 @@ class HomeFragment : Fragment() {
                     appendLog("Disconnected")
                     handler.removeCallbacks(timeoutRunnable)
                     gatt.close()
+                    this@HomeFragment.gatt = null
+                    startCountdown()
                 }
                 else -> if (status != BluetoothGatt.GATT_SUCCESS) {
                     Log.e(TAG, "Error state $newState status $status")
                     appendLog("Error: $status")
                     gatt.close()
+                    this@HomeFragment.gatt = null
+                    startCountdown()
                 }
             }
         }
@@ -144,6 +195,8 @@ class HomeFragment : Fragment() {
                     val m = BleParser.parseMeasurement(data)
                     if (m != null) {
                         Log.i(TAG, "Measurement: $m")
+                        dbHelper?.insertMeasurement(m)
+                        exportCsv(m)
                         appendLog(m.toString())
                     } else {
                         Log.e(TAG, "Failed to parse measurement")
@@ -152,5 +205,68 @@ class HomeFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun exportCsv(m: Measurement) {
+        val rawHex = m.raw.joinToString("") { String.format("%02X", it) }
+        val line = "${m.timestamp},${m.systole},${m.diastole},${m.map},${m.pulse ?: ""},$rawHex\n"
+        // always write to internal file under Android/media
+        val internal = StorageHelper.internalCsvFile(requireContext())
+        internal.appendText(line)
+
+        val p = prefs ?: return
+        if (!p.getBoolean(SettingsFragment.KEY_SAVE_EXTERNAL, false)) return
+        val dirUri = p.getString(SettingsFragment.KEY_DIR, null) ?: return
+        val dir = DocumentFile.fromTreeUri(requireContext(), Uri.parse(dirUri)) ?: return
+        var file = dir.findFile("measurements.csv")
+        if (file == null) {
+            file = dir.createFile("text/csv", "measurements.csv")
+        }
+        file?.uri?.let { uri ->
+            requireContext().contentResolver.openOutputStream(uri, "wa")?.use { out ->
+                out.write(line.toByteArray())
+            }
+        }
+    }
+
+    private fun showWaiting() {
+        activity?.runOnUiThread {
+            statusView?.text = getString(R.string.status_wait_device)
+            progress?.visibility = View.VISIBLE
+        }
+    }
+
+    private fun showLoading() {
+        activity?.runOnUiThread {
+            statusView?.text = getString(R.string.status_loading_from, deviceAddress)
+            progress?.visibility = View.VISIBLE
+        }
+    }
+
+    private fun startCountdown() {
+        var remaining = (retryDelay / 1000).toInt()
+        activity?.runOnUiThread {
+            statusView?.text = getString(R.string.status_wait_seconds, remaining)
+            progress?.visibility = View.VISIBLE
+        }
+        val r = object : Runnable {
+            override fun run() {
+                remaining--
+                if (remaining <= 0) {
+                    activity?.runOnUiThread { logView?.text = "" }
+                    showWaiting()
+                    if (autoRunning) handler.post(connectRunnable)
+                    countdown = null
+                } else {
+                    activity?.runOnUiThread {
+                        statusView?.text = getString(R.string.status_wait_seconds, remaining)
+                    }
+                    handler.postDelayed(this, 1000)
+                }
+            }
+        }
+        countdown?.let { handler.removeCallbacks(it) }
+        countdown = r
+        handler.postDelayed(r, 1000)
     }
 }
