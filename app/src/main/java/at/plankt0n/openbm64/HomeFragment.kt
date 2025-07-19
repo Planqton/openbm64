@@ -14,6 +14,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.TextView
 import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.BleParser
 import java.util.UUID
@@ -31,6 +32,14 @@ class HomeFragment : Fragment() {
     private val cccUuid = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     private var descriptorsWritten = 0
     private val TAG = "HomeFragment"
+    private var logView: TextView? = null
+
+    private fun appendLog(text: String) {
+        activity?.runOnUiThread {
+            val tv = logView ?: return@runOnUiThread
+            tv.append(text + "\n")
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -39,6 +48,7 @@ class HomeFragment : Fragment() {
     ): View {
         val view = inflater.inflate(R.layout.fragment_home, container, false)
         view.findViewById<Button>(R.id.button_read).setOnClickListener { startReadingHistory() }
+        logView = view.findViewById(R.id.text_log)
         return view
     }
 
@@ -46,6 +56,7 @@ class HomeFragment : Fragment() {
         super.onDestroyView()
         handler.removeCallbacks(timeoutRunnable)
         gatt?.close()
+        logView = null
     }
 
     private fun startReadingHistory() {
@@ -54,6 +65,7 @@ class HomeFragment : Fragment() {
         gatt = device.connectGatt(requireContext(), false, gattCallback)
         handler.postDelayed(timeoutRunnable, disconnectTimeout)
         descriptorsWritten = 0
+        logView?.text = ""
     }
 
     private val gattCallback = object : BluetoothGattCallback() {
@@ -61,18 +73,22 @@ class HomeFragment : Fragment() {
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
                     if (status == BluetoothGatt.GATT_SUCCESS) {
+                        appendLog("Connected")
                         gatt.discoverServices()
                     } else {
                         Log.e(TAG, "Connection failed: $status")
+                        appendLog("Connection failed: $status")
                         gatt.close()
                     }
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     Log.d(TAG, "Disconnected with status $status")
+                    appendLog("Disconnected")
                     gatt.close()
                 }
                 else -> if (status != BluetoothGatt.GATT_SUCCESS) {
                     Log.e(TAG, "Error state $newState status $status")
+                    appendLog("Error: $status")
                     gatt.close()
                 }
             }
@@ -81,6 +97,7 @@ class HomeFragment : Fragment() {
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 Log.e(TAG, "Service discovery failed: $status")
+                appendLog("Service discovery failed")
                 gatt.disconnect()
                 return
             }
@@ -112,10 +129,12 @@ class HomeFragment : Fragment() {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 descriptorsWritten++
                 if (descriptorsWritten == 2) {
+                    appendLog("Reading records...")
                     requestAllRecords(gatt)
                 }
             } else {
                 Log.e(TAG, "Descriptor write failed: $status")
+                appendLog("Descriptor error: $status")
             }
         }
 
@@ -128,8 +147,10 @@ class HomeFragment : Fragment() {
                     val m = BleParser.parseMeasurement(data)
                     if (m != null) {
                         Log.i(TAG, "Measurement: $m")
+                        appendLog(m.toString())
                     } else {
                         Log.e(TAG, "Failed to parse measurement")
+                        appendLog("Failed to parse measurement")
                     }
                 }
                 racpUuid -> {
@@ -138,6 +159,7 @@ class HomeFragment : Fragment() {
                     Log.d(TAG, "RACP: $hex")
                     if (data.size >= 3 && data[0].toInt() == 0x06 && data[2].toInt() == 0x01) {
                         handler.removeCallbacks(timeoutRunnable)
+                        appendLog("Finished reading")
                         gatt.disconnect()
                     }
                 }
@@ -149,6 +171,7 @@ class HomeFragment : Fragment() {
             charac.value = byteArrayOf(0x01, 0x01)
             if (!gatt.writeCharacteristic(charac)) {
                 Log.e(TAG, "Failed to write RACP")
+                appendLog("Failed to request records")
             }
         }
     }
