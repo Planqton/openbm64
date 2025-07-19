@@ -10,4 +10,6 @@
     <string name="no_folder_selected">No folder selected</string>
     <string name="clear_db">Clear Database</string>
     <string name="confirm_delete">Delete all measurements?</string>
+    <string name="confirm_switch_external">Switch to external storage and move file?</string>
+    <string name="confirm_switch_internal">Switch to internal storage and move file?</string>
 </resources>

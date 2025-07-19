@@ -169,6 +169,12 @@ class HomeFragment : Fragment() {
     }
 
     private fun exportCsv(m: Measurement) {
+        val line = "${m.timestamp},${m.systole},${m.diastole},${m.map},${m.pulse ?: ""}\n"
+        // always write to internal file
+        requireContext().openFileOutput("measurements.csv", Context.MODE_APPEND).use {
+            it.write(line.toByteArray())
+        }
+
         val p = prefs ?: return
         if (!p.getBoolean(SettingsFragment.KEY_SAVE_EXTERNAL, false)) return
         val dirUri = p.getString(SettingsFragment.KEY_DIR, null) ?: return
@@ -179,7 +185,6 @@ class HomeFragment : Fragment() {
         }
         file?.uri?.let { uri ->
             requireContext().contentResolver.openOutputStream(uri, "wa")?.use { out ->
-                val line = "${m.timestamp},${m.systole},${m.diastole},${m.map},${m.pulse ?: ""}\n"
                 out.write(line.toByteArray())
             }
         }

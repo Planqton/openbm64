@@ -17,6 +17,7 @@ import androidx.core.view.isVisible
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.MeasurementDbHelper
+import java.io.File
 
 class SettingsFragment : Fragment() {
 
@@ -24,6 +25,8 @@ class SettingsFragment : Fragment() {
     private lateinit var saveExternalSwitch: Switch
     private lateinit var externalLayout: View
     private lateinit var externalPath: TextView
+    private var updatingSwitch = false
+    private var pendingEnable = false
 
     private val openDirectory =
         registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
@@ -33,6 +36,17 @@ class SettingsFragment : Fragment() {
                 requireContext().contentResolver.takePersistableUriPermission(uri, flags)
                 prefs.edit().putString(KEY_DIR, uri.toString()).apply()
                 updateExternalPath(uri)
+                if (pendingEnable) {
+                    moveFileToExternal(uri)
+                    prefs.edit().putBoolean(KEY_SAVE_EXTERNAL, true).apply()
+                    externalLayout.isVisible = true
+                    setSwitchChecked(true)
+                    pendingEnable = false
+                }
+            } else if (pendingEnable) {
+                // user cancelled folder selection
+                setSwitchChecked(false)
+                pendingEnable = false
             }
         }
 
@@ -55,11 +69,8 @@ class SettingsFragment : Fragment() {
         prefs.getString(KEY_DIR, null)?.let { updateExternalPath(Uri.parse(it)) }
 
         saveExternalSwitch.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit().putBoolean(KEY_SAVE_EXTERNAL, isChecked).apply()
-            externalLayout.isVisible = isChecked
-            if (isChecked && prefs.getString(KEY_DIR, null) == null) {
-                openDirectory.launch(null)
-            }
+            if (updatingSwitch) return@setOnCheckedChangeListener
+            if (isChecked) confirmEnableExternal() else confirmDisableExternal()
         }
 
         view.findViewById<Button>(R.id.button_choose_folder).setOnClickListener {
@@ -71,6 +82,42 @@ class SettingsFragment : Fragment() {
         }
 
         return view
+    }
+
+    private fun confirmEnableExternal() {
+        AlertDialog.Builder(requireContext())
+            .setMessage(R.string.confirm_switch_external)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                val existing = prefs.getString(KEY_DIR, null)
+                if (existing == null) {
+                    pendingEnable = true
+                    openDirectory.launch(null)
+                } else {
+                    moveFileToExternal(Uri.parse(existing))
+                    prefs.edit().putBoolean(KEY_SAVE_EXTERNAL, true).apply()
+                    externalLayout.isVisible = true
+                    setSwitchChecked(true)
+                }
+            }
+            .setNegativeButton(android.R.string.cancel) { _, _ ->
+                setSwitchChecked(false)
+            }
+            .show()
+    }
+
+    private fun confirmDisableExternal() {
+        AlertDialog.Builder(requireContext())
+            .setMessage(R.string.confirm_switch_internal)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                prefs.getString(KEY_DIR, null)?.let { moveFileToInternal(Uri.parse(it)) }
+                prefs.edit().putBoolean(KEY_SAVE_EXTERNAL, false).apply()
+                externalLayout.isVisible = false
+                setSwitchChecked(false)
+            }
+            .setNegativeButton(android.R.string.cancel) { _, _ ->
+                setSwitchChecked(true)
+            }
+            .show()
     }
 
     private fun confirmAndClearDatabase() {
@@ -87,13 +134,48 @@ class SettingsFragment : Fragment() {
     }
 
     private fun deleteCsv() {
-        val dirUri = prefs.getString(KEY_DIR, null) ?: return
-        val dir = DocumentFile.fromTreeUri(requireContext(), Uri.parse(dirUri)) ?: return
-        dir.findFile("measurements.csv")?.delete()
+        File(requireContext().filesDir, "measurements.csv").delete()
+        val dirUri = prefs.getString(KEY_DIR, null)
+        if (dirUri != null) {
+            val dir = DocumentFile.fromTreeUri(requireContext(), Uri.parse(dirUri)) ?: return
+            dir.findFile("measurements.csv")?.delete()
+        }
     }
 
     private fun updateExternalPath(uri: Uri) {
         externalPath.text = uri.path
+    }
+
+    private fun setSwitchChecked(checked: Boolean) {
+        updatingSwitch = true
+        saveExternalSwitch.isChecked = checked
+        updatingSwitch = false
+    }
+
+    private fun moveFileToExternal(uri: Uri) {
+        val internal = File(requireContext().filesDir, "measurements.csv")
+        if (!internal.exists()) return
+        val dir = DocumentFile.fromTreeUri(requireContext(), uri) ?: return
+        var file = dir.findFile("measurements.csv")
+        if (file == null) {
+            file = dir.createFile("text/csv", "measurements.csv")
+        }
+        file?.uri?.let { dest ->
+            requireContext().contentResolver.openOutputStream(dest, "w")?.use { out ->
+                internal.inputStream().use { it.copyTo(out) }
+            }
+            internal.delete()
+        }
+    }
+
+    private fun moveFileToInternal(uri: Uri) {
+        val internal = File(requireContext().filesDir, "measurements.csv")
+        val dir = DocumentFile.fromTreeUri(requireContext(), uri) ?: return
+        val file = dir.findFile("measurements.csv") ?: return
+        requireContext().contentResolver.openInputStream(file.uri)?.use { input ->
+            internal.outputStream().use { output -> input.copyTo(output) }
+        }
+        file.delete()
     }
 
     companion object {
@@ -101,3 +183,4 @@ class SettingsFragment : Fragment() {
         const val KEY_DIR = "external_dir"
     }
 }
+
