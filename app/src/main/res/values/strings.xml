@@ -11,7 +11,29 @@
     <string name="confirm_delete">Delete all measurements?</string>
     <string name="confirm_switch_external">Switch to external storage and move file?</string>
     <string name="confirm_switch_internal">Switch to internal storage and move file?</string>
-    <string name="status_wait_device">Warte auf BM64...</string>
+    <string name="status_wait_device">Warte auf BM64...\nPairen Sie das Gerät mit dem Android Gerät und drücken Sie folgende Taste am BM64:</string>
     <string name="status_loading_from">Lade Dateien von %1$s</string>
     <string name="status_wait_seconds">Warte %1$d Sekunden...</string>
+    <string name="history_count">Einträge: %1$d</string>
+
+    <!-- History column titles -->
+    <string name="column_timestamp">Zeitstempel</string>
+    <string name="column_systole">Systole</string>
+    <string name="column_diastole">Diastole</string>
+    <string name="column_map">MAP</string>
+    <string name="column_pulse">Puls</string>
+
+    <!-- Log messages -->
+    <string name="log_timeout_disconnect">Timeout - disconnecting</string>
+    <string name="log_connecting">Connecting...</string>
+    <string name="log_connected">Connected</string>
+    <string name="log_connection_failed">Connection failed: %1$d</string>
+    <string name="log_disconnected">Disconnected</string>
+    <string name="log_error">Error: %1$d</string>
+    <string name="log_service_discovery_failed">Service discovery failed</string>
+    <string name="log_characteristic_missing">Characteristic missing</string>
+    <string name="log_descriptor_missing">Descriptor missing</string>
+    <string name="log_notifications_enabled">Notifications enabled</string>
+    <string name="log_descriptor_error">Descriptor error: %1$d</string>
+    <string name="log_failed_parse_measurement">Failed to parse measurement</string>
 </resources>

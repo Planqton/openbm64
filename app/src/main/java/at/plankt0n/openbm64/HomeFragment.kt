@@ -32,7 +32,7 @@ class HomeFragment : Fragment() {
     private val handler = Handler(Looper.getMainLooper())
     private val disconnectTimeout = 60_000L
     private val timeoutRunnable = Runnable {
-        appendLog("Timeout - disconnecting")
+        appendLog(getString(R.string.log_timeout_disconnect))
         gatt?.disconnect()
     }
     private val retryDelay = 10_000L
@@ -108,7 +108,7 @@ class HomeFragment : Fragment() {
     private fun startReadingHistory() {
         val adapter = BluetoothAdapter.getDefaultAdapter()
         val device = adapter.getRemoteDevice(deviceAddress)
-        appendLog("Connecting...")
+        appendLog(getString(R.string.log_connecting))
         showWaiting()
         gatt = device.connectGatt(requireContext(), false, gattCallback)
     }
@@ -118,19 +118,19 @@ class HomeFragment : Fragment() {
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
                     if (status == BluetoothGatt.GATT_SUCCESS) {
-                        appendLog("Connected")
+                        appendLog(getString(R.string.log_connected))
                         showLoading()
                         gatt.discoverServices()
                     } else {
                         Log.e(TAG, "Connection failed: $status")
-                        appendLog("Connection failed: $status")
+                        appendLog(getString(R.string.log_connection_failed, status))
                         gatt.close()
                         this@HomeFragment.gatt = null
                     }
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     Log.d(TAG, "Disconnected with status $status")
-                    appendLog("Disconnected")
+                    appendLog(getString(R.string.log_disconnected))
                     handler.removeCallbacks(timeoutRunnable)
                     gatt.close()
                     this@HomeFragment.gatt = null
@@ -138,7 +138,7 @@ class HomeFragment : Fragment() {
                 }
                 else -> if (status != BluetoothGatt.GATT_SUCCESS) {
                     Log.e(TAG, "Error state $newState status $status")
-                    appendLog("Error: $status")
+                    appendLog(getString(R.string.log_error, status))
                     gatt.close()
                     this@HomeFragment.gatt = null
                     startCountdown()
@@ -149,7 +149,7 @@ class HomeFragment : Fragment() {
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 Log.e(TAG, "Service discovery failed: $status")
-                appendLog("Service discovery failed")
+                appendLog(getString(R.string.log_service_discovery_failed))
                 gatt.disconnect()
                 return
             }
@@ -157,7 +157,7 @@ class HomeFragment : Fragment() {
             val measChar = service?.getCharacteristic(measUuid)
             if (measChar == null) {
                 Log.e(TAG, "Measurement characteristic not found")
-                appendLog("Characteristic missing")
+                appendLog(getString(R.string.log_characteristic_missing))
                 gatt.disconnect()
                 return
             }
@@ -166,7 +166,7 @@ class HomeFragment : Fragment() {
                 it.value = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
                 gatt.writeDescriptor(it)
             } ?: run {
-                appendLog("Descriptor missing")
+                appendLog(getString(R.string.log_descriptor_missing))
                 gatt.disconnect()
             }
         }
@@ -177,11 +177,11 @@ class HomeFragment : Fragment() {
             status: Int
         ) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                appendLog("Notifications enabled")
+                appendLog(getString(R.string.log_notifications_enabled))
                 handler.postDelayed(timeoutRunnable, disconnectTimeout)
             } else {
                 Log.e(TAG, "Descriptor write failed: $status")
-                appendLog("Descriptor error: $status")
+                appendLog(getString(R.string.log_descriptor_error, status))
                 gatt.disconnect()
             }
         }
@@ -195,12 +195,13 @@ class HomeFragment : Fragment() {
                     val m = BleParser.parseMeasurement(data)
                     if (m != null) {
                         Log.i(TAG, "Measurement: $m")
-                        dbHelper?.insertMeasurement(m)
-                        exportCsv(m)
-                        appendLog(m.toString())
+                        if (dbHelper?.insertMeasurementIfNotExists(m) == true) {
+                            exportCsv(m)
+                            appendLog(m.toString())
+                        }
                     } else {
                         Log.e(TAG, "Failed to parse measurement")
-                        appendLog("Failed to parse measurement")
+                        appendLog(getString(R.string.log_failed_parse_measurement))
                     }
                 }
             }

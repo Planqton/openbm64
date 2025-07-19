@@ -24,6 +24,12 @@
             android:layout_weight="1"
             android:layout_marginStart="8dp"
             android:text="@string/status_wait_device" />
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginStart="8dp"
+            android:src="@drawable/bm64search" />
     </LinearLayout>
 
     <ScrollView

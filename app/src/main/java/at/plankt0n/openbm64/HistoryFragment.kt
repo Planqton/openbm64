@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ListView
+import android.widget.TextView
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.Measurement
@@ -65,7 +66,9 @@ class HistoryFragment : Fragment() {
     ): View {
         val view = inflater.inflate(R.layout.fragment_history, container, false)
         val listView: ListView = view.findViewById(R.id.list_history)
+        val countView: TextView = view.findViewById(R.id.text_count)
         val measurements = loadMeasurements()
+        countView.text = getString(R.string.history_count, measurements.size)
         listView.adapter = MeasurementAdapter(requireContext(), measurements)
         return view
     }

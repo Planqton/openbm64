@@ -44,6 +44,21 @@ class MeasurementDbHelper(context: Context) : SQLiteOpenHelper(
         writableDatabase.insert(TABLE_NAME, null, cv)
     }
 
+    fun insertMeasurementIfNotExists(values: Measurement): Boolean {
+        val exists = readableDatabase.query(
+            TABLE_NAME,
+            arrayOf(COLUMN_ID),
+            "${COLUMN_TIMESTAMP}=? AND ${COLUMN_SYSTOLE}=? AND ${COLUMN_DIASTOLE}=?",
+            arrayOf(values.timestamp, values.systole.toString(), values.diastole.toString()),
+            null,
+            null,
+            null
+        ).use { it.moveToFirst() }
+        if (exists) return false
+        insertMeasurement(values)
+        return true
+    }
+
     fun getAll(): List<Measurement> {
         val list = mutableListOf<Measurement>()
         val c: Cursor = readableDatabase.query(TABLE_NAME, null, null, null, null, null, "$COLUMN_ID DESC")
