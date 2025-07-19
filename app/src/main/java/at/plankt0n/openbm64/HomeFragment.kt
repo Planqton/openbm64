@@ -51,12 +51,6 @@ class HomeFragment : Fragment() {
     ): View {
         val view = inflater.inflate(R.layout.fragment_home, container, false)
         view.findViewById<Button>(R.id.button_read).setOnClickListener { startReadingHistory() }
-        view.findViewById<Button>(R.id.button_history).setOnClickListener {
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.fragment_container, HistoryFragment())
-                .addToBackStack(null)
-                .commit()
-        }
         dbHelper = MeasurementDbHelper(requireContext())
         logView = view.findViewById(R.id.text_log)
         return view

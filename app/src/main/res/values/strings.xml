@@ -2,5 +2,8 @@
     <string name="app_name">openBM64</string>
     <string name="title_home">Home</string>
     <string name="read_measurement">Read stored values</string>
-    <string name="view_history">View history</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_history">Historie</string>
+    <string name="nav_settings">Einstellungen</string>
+    <string name="settings_placeholder">Settings coming soon</string>
 </resources>
