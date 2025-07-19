@@ -115,23 +115,26 @@ class HomeFragment : Fragment() {
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
-            val service = gatt.services.firstOrNull { it.uuid.toString().equals("00001810-0000-1000-8000-00805f9b34fb", true) }
-            val characteristic = service?.getCharacteristic(java.util.UUID.fromString("00002a35-0000-1000-8000-00805f9b34fb"))
-            if (status == BluetoothGatt.GATT_SUCCESS && characteristic != null) {
-                gatt.setCharacteristicNotification(characteristic, true)
-                characteristic.descriptors.firstOrNull()?.let { desc ->
-                    desc.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-                    gatt.writeDescriptor(desc)
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                val service = gatt.getService(java.util.UUID.fromString("00001810-0000-1000-8000-00805f9b34fb"))
+                val characteristic = service?.getCharacteristic(java.util.UUID.fromString("00002a35-0000-1000-8000-00805f9b34fb"))
+                if (characteristic != null) {
+                    gatt.setCharacteristicNotification(characteristic, true)
+                    val desc = characteristic.getDescriptor(java.util.UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
+                    desc?.let {
+                        it.value = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
+                        gatt.writeDescriptor(it)
+                    }
+                    statusText.post {
+                        val addr = deviceAddress ?: ""
+                        statusText.text = getString(R.string.reading_data_from, addr)
+                    }
+                    return
                 }
-                statusText.post {
-                    val addr = deviceAddress ?: ""
-                    statusText.text = getString(R.string.reading_data_from, addr)
-                }
-            } else {
-                gatt.close()
-                statusText.post { statusText.text = getString(R.string.waiting_for_bm64) }
-                handler.postDelayed({ startListening() }, retryDelayMs)
             }
+            gatt.close()
+            statusText.post { statusText.text = getString(R.string.waiting_for_bm64) }
+            handler.postDelayed({ startListening() }, retryDelayMs)
         }
 
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
