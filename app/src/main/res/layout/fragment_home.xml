@@ -29,7 +29,7 @@
             android:layout_width="12dp"
             android:layout_height="12dp"
             android:layout_marginStart="8dp"
-            android:src="@drawable/bm64search" />
+            android:src="@drawable/bm64logs" />
     </LinearLayout>
 
     <ScrollView
