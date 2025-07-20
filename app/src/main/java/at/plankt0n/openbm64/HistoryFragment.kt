@@ -1,62 +1,26 @@
 package at.plankt0n.openbm64
 
-import android.content.Context
-import android.net.Uri
+import android.app.AlertDialog
+import android.widget.EditText
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ListView
 import android.widget.TextView
-import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.Measurement
-import at.plankt0n.openbm64.StorageHelper
+import at.plankt0n.openbm64.db.MeasurementDbHelper
 
 class HistoryFragment : Fragment() {
 
-    private fun parseCsvLine(line: String): Measurement? {
-        val parts = line.split(",")
-        if (parts.size < 4) return null
-        val pulse = parts.getOrNull(4)?.takeIf { it.isNotEmpty() }?.toIntOrNull()
-        val raw = if (parts.size > 5) {
-            parts[5].chunked(2).mapNotNull {
-                it.toIntOrNull(16)?.toByte()
-            }.toByteArray()
-        } else ByteArray(0)
-        return Measurement(
-            timestamp = parts[0],
-            systole = parts[1].toIntOrNull() ?: return null,
-            diastole = parts[2].toIntOrNull() ?: return null,
-            map = parts[3].toDoubleOrNull() ?: return null,
-            pulse = pulse,
-            raw = raw
-        )
-    }
+    private lateinit var dbHelper: MeasurementDbHelper
+    private lateinit var measurements: MutableList<Measurement>
+    private lateinit var adapter: MeasurementAdapter
 
-    private fun loadMeasurements(): List<Measurement> {
-        val p = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
-        val list = mutableListOf<Measurement>()
-        if (p.getBoolean(SettingsFragment.KEY_SAVE_EXTERNAL, false)) {
-            val dirUri = p.getString(SettingsFragment.KEY_DIR, null)
-            if (dirUri != null) {
-                val dir = DocumentFile.fromTreeUri(requireContext(), Uri.parse(dirUri))
-                val file = dir?.findFile("measurements.csv")
-                file?.uri?.let { uri ->
-                    requireContext().contentResolver.openInputStream(uri)?.bufferedReader()?.useLines { lines ->
-                        lines.mapNotNull { parseCsvLine(it) }.forEach { list.add(it) }
-                    }
-                }
-            }
-        } else {
-            val file = StorageHelper.internalCsvFile(requireContext())
-            if (file.exists()) {
-                file.bufferedReader().useLines { lines ->
-                    lines.mapNotNull { parseCsvLine(it) }.forEach { list.add(it) }
-                }
-            }
-        }
-        return list
+    private fun loadMeasurements(): MutableList<Measurement> {
+        dbHelper = MeasurementDbHelper(requireContext())
+        return dbHelper.getAll().toMutableList()
     }
 
     override fun onCreateView(
@@ -67,10 +31,34 @@ class HistoryFragment : Fragment() {
         val view = inflater.inflate(R.layout.fragment_history, container, false)
         val listView: ListView = view.findViewById(R.id.list_history)
         val countView: TextView = view.findViewById(R.id.text_count)
-        val measurements = loadMeasurements()
+        measurements = loadMeasurements()
         countView.text = getString(R.string.history_count, measurements.size)
-        listView.adapter = MeasurementAdapter(requireContext(), measurements)
+        adapter = MeasurementAdapter(requireContext(), measurements)
+        listView.adapter = adapter
+
+        listView.setOnItemClickListener { _, _, position, _ ->
+            val m = measurements[position]
+            val edit = EditText(requireContext()).apply { setText(m.info ?: "") }
+            AlertDialog.Builder(requireContext())
+                .setTitle(R.string.edit_info)
+                .setView(edit)
+                .setPositiveButton(android.R.string.ok) { _, _ ->
+                    m.info = edit.text.toString()
+                    dbHelper.updateInfo(m.id, m.info ?: "")
+                    adapter.notifyDataSetChanged()
+                }
+                .setNegativeButton(android.R.string.cancel, null)
+                .show()
+        }
+
         return view
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        if (::dbHelper.isInitialized) {
+            dbHelper.close()
+        }
     }
 }
 

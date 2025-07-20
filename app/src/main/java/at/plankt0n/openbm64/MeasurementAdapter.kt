@@ -23,6 +23,13 @@ class MeasurementAdapter(
         view.findViewById<TextView>(R.id.cell_diastole).text = item.diastole.toString()
         view.findViewById<TextView>(R.id.cell_map).text = item.map.toString()
         view.findViewById<TextView>(R.id.cell_pulse).text = item.pulse?.toString() ?: ""
+        val infoView = view.findViewById<TextView>(R.id.cell_info)
+        if (item.info.isNullOrBlank()) {
+            infoView.visibility = View.GONE
+        } else {
+            infoView.visibility = View.VISIBLE
+            infoView.text = item.info
+        }
         return view
     }
 }
