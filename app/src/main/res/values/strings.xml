@@ -36,4 +36,6 @@
     <string name="log_notifications_enabled">Notifications enabled</string>
     <string name="log_descriptor_error">Descriptor error: %1$d</string>
     <string name="log_failed_parse_measurement">Failed to parse measurement</string>
+    <string name="version_format">Version %1$s</string>
+    <string name="special_thanks">special thanks to: https://gitlab.com/dieheins/bpmeter</string>
 </resources>

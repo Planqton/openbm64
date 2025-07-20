@@ -25,6 +25,8 @@ class SettingsFragment : Fragment() {
     private lateinit var saveExternalSwitch: Switch
     private lateinit var externalLayout: View
     private lateinit var externalPath: TextView
+    private lateinit var aboutLayout: View
+    private lateinit var versionText: TextView
     private var updatingSwitch = false
     private var pendingEnable = false
 
@@ -67,6 +69,14 @@ class SettingsFragment : Fragment() {
         saveExternalSwitch = view.findViewById(R.id.switch_save_external)
         externalLayout = view.findViewById(R.id.layout_external)
         externalPath = view.findViewById(R.id.text_external_path)
+        aboutLayout = view.findViewById(R.id.layout_about)
+        versionText = view.findViewById(R.id.text_version)
+
+        versionText.text = getString(R.string.version_format, BuildConfig.VERSION_NAME)
+        aboutLayout.setOnClickListener {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Planqton/openbm64"))
+            startActivity(intent)
+        }
 
         val dir = prefs.getString(KEY_DIR, null)
         val enabledPref = prefs.getBoolean(KEY_SAVE_EXTERNAL, false)
