@@ -13,6 +13,11 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.Measurement
 import at.plankt0n.openbm64.db.MeasurementDbHelper
+import at.plankt0n.openbm64.db.CsvImporter
+import android.content.Context
+import android.net.Uri
+import at.plankt0n.openbm64.StorageHelper
+import at.plankt0n.openbm64.SettingsFragment
 
 class HistoryFragment : Fragment() {
 
@@ -22,7 +27,17 @@ class HistoryFragment : Fragment() {
 
     private fun loadMeasurements(): MutableList<Measurement> {
         dbHelper = MeasurementDbHelper(requireContext())
-        return dbHelper.getAll().toMutableList()
+        var list = dbHelper.getAll().toMutableList()
+        if (list.isEmpty()) {
+            CsvImporter.importFromFile(StorageHelper.internalCsvFile(requireContext()), dbHelper)
+            val prefs = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+            val dir = prefs.getString(SettingsFragment.KEY_DIR, null)
+            if (dir != null) {
+                CsvImporter.importFromDocument(requireContext(), Uri.parse(dir), dbHelper)
+            }
+            list = dbHelper.getAll().toMutableList()
+        }
+        return list
     }
 
     override fun onCreateView(
