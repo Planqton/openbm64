@@ -35,14 +35,17 @@ object CsvImporter {
 
     fun existsInFile(file: File, m: Measurement): Boolean {
         if (!file.exists()) return false
+        var found = false
         file.forEachLine { line ->
-            parseLine(line)?.let {
-                if (it.timestamp == m.timestamp && it.systole == m.systole && it.diastole == m.diastole) {
-                    return true
+            if (!found) {
+                parseLine(line)?.let {
+                    if (it.timestamp == m.timestamp && it.systole == m.systole && it.diastole == m.diastole) {
+                        found = true
+                    }
                 }
             }
         }
-        return false
+        return found
     }
 
     fun appendToFile(file: File, m: Measurement) {
