@@ -16,7 +16,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isVisible
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
-import at.plankt0n.openbm64.BuildConfig
 import at.plankt0n.openbm64.db.MeasurementDbHelper
 import at.plankt0n.openbm64.StorageHelper
 
