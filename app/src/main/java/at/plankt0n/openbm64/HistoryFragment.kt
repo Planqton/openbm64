@@ -12,7 +12,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.Measurement
-import at.plankt0n.openbm64.db.MeasurementDbHelper
 import at.plankt0n.openbm64.db.CsvImporter
 import android.content.Context
 import android.net.Uri
@@ -21,23 +20,20 @@ import at.plankt0n.openbm64.SettingsFragment
 
 class HistoryFragment : Fragment() {
 
-    private lateinit var dbHelper: MeasurementDbHelper
     private lateinit var measurements: MutableList<Measurement>
     private lateinit var adapter: MeasurementAdapter
 
     private fun loadMeasurements(): MutableList<Measurement> {
-        dbHelper = MeasurementDbHelper(requireContext())
-        var list = dbHelper.getAll().toMutableList()
+        val internal = StorageHelper.internalCsvFile(requireContext())
+        var list = CsvImporter.readFromFile(internal)
         if (list.isEmpty()) {
-            CsvImporter.importFromFile(StorageHelper.internalCsvFile(requireContext()), dbHelper)
             val prefs = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
             val dir = prefs.getString(SettingsFragment.KEY_DIR, null)
             if (dir != null) {
-                CsvImporter.importFromDocument(requireContext(), Uri.parse(dir), dbHelper)
+                list = CsvImporter.readFromDocument(requireContext(), Uri.parse(dir))
             }
-            list = dbHelper.getAll().toMutableList()
         }
-        return list
+        return list.toMutableList()
     }
 
     override fun onCreateView(
@@ -58,7 +54,7 @@ class HistoryFragment : Fragment() {
                 .setView(edit)
                 .setPositiveButton(android.R.string.ok) { _, _ ->
                     m.info = edit.text.toString()
-                    dbHelper.updateInfo(m.id, m.info ?: "")
+                    saveMeasurements()
                     adapter.notifyItemChanged(position)
                 }
                 .setNegativeButton(android.R.string.cancel, null)
@@ -78,7 +74,7 @@ class HistoryFragment : Fragment() {
                 val pos = viewHolder.adapterPosition
                 val m = measurements[pos]
                 m.invalid = !m.invalid
-                dbHelper.updateInvalid(m.id, m.invalid)
+                saveMeasurements()
                 adapter.notifyItemChanged(pos)
             }
         })
@@ -89,8 +85,16 @@ class HistoryFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        if (::dbHelper.isInitialized) {
-            dbHelper.close()
+    }
+
+    private fun saveMeasurements() {
+        val file = StorageHelper.internalCsvFile(requireContext())
+        CsvImporter.writeFile(file, measurements)
+        val prefs = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
+        if (prefs.getBoolean(SettingsFragment.KEY_SAVE_EXTERNAL, false)) {
+            prefs.getString(SettingsFragment.KEY_DIR, null)?.let { dir ->
+                CsvImporter.writeDocument(requireContext(), Uri.parse(dir), measurements)
+            }
         }
     }
 }

@@ -18,8 +18,7 @@ import android.widget.ProgressBar
 import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.BleParser
 import at.plankt0n.openbm64.db.Measurement
-import at.plankt0n.openbm64.db.MeasurementDbHelper
-import androidx.documentfile.provider.DocumentFile
+import at.plankt0n.openbm64.db.CsvImporter
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
@@ -50,7 +49,6 @@ class HomeFragment : Fragment() {
     private var statusView: TextView? = null
     private var progress: ProgressBar? = null
     private var countdown: Runnable? = null
-    private var dbHelper: MeasurementDbHelper? = null
     private var prefs: SharedPreferences? = null
 
     private fun appendLog(text: String) {
@@ -70,7 +68,6 @@ class HomeFragment : Fragment() {
         savedInstanceState: Bundle?,
     ): View {
         val view = inflater.inflate(R.layout.fragment_home, container, false)
-        dbHelper = MeasurementDbHelper(requireContext())
         prefs = requireContext().getSharedPreferences("settings", Context.MODE_PRIVATE)
         logView = view.findViewById(R.id.text_log)
         statusView = view.findViewById(R.id.text_status)
@@ -105,7 +102,6 @@ class HomeFragment : Fragment() {
         logView = null
         statusView = null
         progress = null
-        dbHelper = null
         prefs = null
     }
 
@@ -199,7 +195,8 @@ class HomeFragment : Fragment() {
                     val m = BleParser.parseMeasurement(data)
                     if (m != null) {
                         Log.i(TAG, "Measurement: $m")
-                        if (dbHelper?.insertMeasurementIfNotExists(m) == true) {
+                        val file = StorageHelper.internalCsvFile(requireContext())
+                        if (!CsvImporter.existsInFile(file, m)) {
                             exportCsv(m)
                             appendLog(m.toString())
                         }
@@ -213,25 +210,13 @@ class HomeFragment : Fragment() {
     }
 
     private fun exportCsv(m: Measurement) {
-        val rawHex = m.raw.joinToString("") { String.format("%02X", it) }
-        val line = "${m.timestamp},${m.systole},${m.diastole},${m.map},${m.pulse ?: ""},${m.invalid},$rawHex\n"
-        // always write to internal file under Android/media
         val internal = StorageHelper.internalCsvFile(requireContext())
-        internal.appendText(line)
+        CsvImporter.appendToFile(internal, m)
 
         val p = prefs ?: return
         if (!p.getBoolean(SettingsFragment.KEY_SAVE_EXTERNAL, false)) return
         val dirUri = p.getString(SettingsFragment.KEY_DIR, null) ?: return
-        val dir = DocumentFile.fromTreeUri(requireContext(), Uri.parse(dirUri)) ?: return
-        var file = dir.findFile("measurements.csv")
-        if (file == null) {
-            file = dir.createFile("text/csv", "measurements.csv")
-        }
-        file?.uri?.let { uri ->
-            requireContext().contentResolver.openOutputStream(uri, "wa")?.use { out ->
-                out.write(line.toByteArray())
-            }
-        }
+        CsvImporter.appendToDocument(requireContext(), Uri.parse(dirUri), m)
     }
 
     private fun showWaiting() {

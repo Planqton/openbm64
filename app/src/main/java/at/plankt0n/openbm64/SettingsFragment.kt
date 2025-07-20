@@ -16,7 +16,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.isVisible
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
-import at.plankt0n.openbm64.db.MeasurementDbHelper
 import at.plankt0n.openbm64.StorageHelper
 
 class SettingsFragment : Fragment() {
@@ -135,9 +134,6 @@ class SettingsFragment : Fragment() {
         AlertDialog.Builder(requireContext())
             .setMessage(R.string.confirm_delete)
             .setPositiveButton(android.R.string.ok) { _, _ ->
-                MeasurementDbHelper(requireContext()).writableDatabase.use {
-                    it.delete("measurements", null, null)
-                }
                 deleteCsv()
             }
             .setNegativeButton(android.R.string.cancel, null)
