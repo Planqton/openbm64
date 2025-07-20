@@ -214,7 +214,7 @@ class HomeFragment : Fragment() {
 
     private fun exportCsv(m: Measurement) {
         val rawHex = m.raw.joinToString("") { String.format("%02X", it) }
-        val line = "${m.timestamp},${m.systole},${m.diastole},${m.map},${m.pulse ?: ""},$rawHex\n"
+        val line = "${m.timestamp},${m.systole},${m.diastole},${m.map},${m.pulse ?: ""},${m.invalid},$rawHex\n"
         // always write to internal file under Android/media
         val internal = StorageHelper.internalCsvFile(requireContext())
         internal.appendText(line)

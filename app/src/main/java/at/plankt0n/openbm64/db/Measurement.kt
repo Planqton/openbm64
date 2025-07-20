@@ -8,5 +8,6 @@ data class Measurement(
     val map: Double,
     val pulse: Int?,
     val raw: ByteArray,
-    var info: String? = null
+    var info: String? = null,
+    var invalid: Boolean = false
 )
