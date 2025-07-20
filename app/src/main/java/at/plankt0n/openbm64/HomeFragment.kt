@@ -56,6 +56,10 @@ class HomeFragment : Fragment() {
     private fun appendLog(text: String) {
         activity?.runOnUiThread {
             val tv = logView ?: return@runOnUiThread
+            val current = tv.text.toString()
+            val trimmed = current.trimEnd()
+            val lastLine = trimmed.substringAfterLast('\n', trimmed)
+            if (lastLine == text) return@runOnUiThread
             tv.append(text + "\n")
         }
     }
