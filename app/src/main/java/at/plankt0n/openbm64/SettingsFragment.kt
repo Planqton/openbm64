@@ -19,6 +19,7 @@ import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.MeasurementDbHelper
 import at.plankt0n.openbm64.StorageHelper
 
+
 class SettingsFragment : Fragment() {
 
     private lateinit var prefs: SharedPreferences
@@ -72,7 +73,13 @@ class SettingsFragment : Fragment() {
         aboutLayout = view.findViewById(R.id.layout_about)
         versionText = view.findViewById(R.id.text_version)
 
-        versionText.text = getString(R.string.version_format, BuildConfig.VERSION_NAME)
+     //   versionText.text = getString(R.string.version_format, BuildConfig.VERSION_NAME)
+        val versionName = requireContext().packageManager
+            .getPackageInfo(requireContext().packageName, 0).versionName
+
+        versionText.text = getString(R.string.version_format, versionName)
+
+
         aboutLayout.setOnClickListener {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/Planqton/openbm64"))
             startActivity(intent)
