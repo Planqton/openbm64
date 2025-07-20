@@ -7,5 +7,6 @@ data class Measurement(
     val diastole: Int,
     val map: Double,
     val pulse: Int?,
-    val raw: ByteArray
+    val raw: ByteArray,
+    var info: String? = null
 )
