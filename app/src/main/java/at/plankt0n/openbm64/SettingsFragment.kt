@@ -18,7 +18,6 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import at.plankt0n.openbm64.db.MeasurementDbHelper
 import at.plankt0n.openbm64.StorageHelper
-import at.plankt0n.openbm64.BuildConfig
 
 class SettingsFragment : Fragment() {
 
